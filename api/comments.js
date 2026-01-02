@@ -5,34 +5,64 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const { script } = req.query;
-
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('script', script)
-      .order('created_at', { ascending: false });
-
-    if (error) return res.status(500).json(error);
-    return res.status(200).json(data);
+  if (req.method === 'OPTIONS') {
+    return res
+      .status(204)
+      .set(CORS_HEADERS)
+      .end();
   }
 
-  if (req.method === 'POST') {
-    const { script, content } = req.body;
+  res.set(CORS_HEADERS);
 
-    if (!content || content.length < 3) {
-      return res.status(400).json({ error: 'Comentario inválido' });
+  try {
+    if (req.method === 'GET') {
+      const { script } = req.query || {};
+
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('script', script)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase SELECT error:', error);
+        return res.status(500).json({ error: { message: error.message || 'DB select error' } });
+      }
+
+      return res.status(200).json(data || []);
     }
 
-    const { error } = await supabase
-      .from('comments')
-      .insert([{ script, content }]);
+    if (req.method === 'POST') {
+      const { script, content } = req.body || {};
 
-    if (error) return res.status(500).json(error);
-    return res.status(200).json({ ok: true });
+      if (!script || !content || typeof content !== 'string' || content.trim().length < 3) {
+        return res.status(400).json({ error: { message: 'Invalid input: script & content required (min 3 chars)' } });
+      }
+
+      const payload = { script, content: content.trim() };
+
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([payload]);
+
+      if (error) {
+        console.error('Supabase INSERT error:', error);
+        return res.status(500).json({ error: { message: error.message || 'DB insert error' } });
+      }
+
+      return res.status(200).json({ ok: true, inserted: data });
+    }
+
+    return res.status(405).json({ error: { message: 'Method not allowed' } });
+  } catch (err) {
+    console.error('Unhandled error in function:', err);
+    return res.status(500).json({ error: { message: err.message || 'Internal server error' } });
   }
-
-  res.status(405).end();
 }
