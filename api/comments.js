@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -44,6 +44,25 @@ export default async function handler(req, res) {
     const { error } = await supabase
       .from('comments')
       .insert([{ script, content }]);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(200).json({ ok: true });
+  }
+
+  if (req.method === 'DELETE') {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ error: 'missing id' });
+    }
+
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', id);
 
     if (error) {
       return res.status(500).json({ error: error.message });
