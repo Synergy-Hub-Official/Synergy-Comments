@@ -15,9 +15,16 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    const { script } = req.query;
+
+    if (!script) {
+      return res.status(400).json({ error: 'no script specified' });
+    }
+
     const { data, error } = await supabase
       .from('comments')
       .select('*')
+      .eq('script', script)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -28,15 +35,15 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { content } = req.body || {};
+    const { script, content } = req.body || {};
 
-    if (!content) {
-      return res.status(400).json({ error: 'no content' });
+    if (!script || !content) {
+      return res.status(400).json({ error: 'missing data' });
     }
 
     const { error } = await supabase
       .from('comments')
-      .insert([{ script: 'TEST', content }]);
+      .insert([{ script, content }]);
 
     if (error) {
       return res.status(500).json({ error: error.message });
