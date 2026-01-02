@@ -41,22 +41,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'missing data' });
     }
 
-    const { error } = await supabase
+    if (content.length < 3 || content.length > 500) {
+      return res.status(400).json({ error: 'comment must be 3-500 characters' });
+    }
+
+    const { data, error } = await supabase
       .from('comments')
-      .insert([{ script, content }]);
+      .insert([{ script, content }])
+      .select()
+      .single();
 
     if (error) {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json(data);
   }
 
   if (req.method === 'DELETE') {
     const { id } = req.query;
 
     if (!id) {
-      return res.status(400).json({ error: 'missing id' });
+      return res.status(400).json({ error: 'missing comment id' });
     }
 
     const { error } = await supabase
@@ -68,7 +74,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ success: true });
   }
 
   return res.status(405).end();
